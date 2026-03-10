@@ -3,6 +3,7 @@ import { HttpModule } from '@nestjs/axios';
 import { ConfigService } from '@nestjs/config';
 import { TodoController } from './todo.controller';
 import { TodoService } from './todo.service';
+import { MemoGateway } from './memo.gateway';
 
 @Module({
   imports: [
@@ -15,6 +16,6 @@ import { TodoService } from './todo.service';
     }),
   ],
   controllers: [TodoController],
-  providers: [TodoService],
+  providers: [TodoService, MemoGateway],
 })
 export class TodoModule {}
