@@ -1,8 +1,11 @@
 /* eslint-disable @typescript-eslint/no-unsafe-return */
 import { HttpService } from '@nestjs/axios';
-import { HttpException, Injectable } from '@nestjs/common';
+import { HttpException, Injectable, UnauthorizedException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { firstValueFrom } from 'rxjs';
 import { AxiosError } from 'axios';
+import { AccessToken } from 'livekit-server-sdk';
+import * as jwt from 'jsonwebtoken';
 import { CreateMemoInput } from './dtos/create-memo.input';
 import {
   CreateProjectInput,
@@ -28,7 +31,25 @@ import { ChangePasswordInput } from './dtos/change-password.input';
 
 @Injectable()
 export class TodoService {
-  constructor(private readonly http: HttpService) {
+  private readonly jwtSecret: string;
+
+  private readonly liveKitApiKey: string;
+
+  private readonly liveKitApiSecret: string;
+
+  constructor(
+    private readonly http: HttpService,
+    private readonly configService: ConfigService,
+  ) {
+    this.jwtSecret =
+      this.configService.get<string>('JWT_SECRET') ??
+      this.configService.get<string>('SECRET_KEY') ??
+      'your-secret-key-change-in-production';
+
+    this.liveKitApiKey = this.configService.get<string>('LIVEKIT_API_KEY') ?? 'devkey';
+    this.liveKitApiSecret =
+      this.configService.get<string>('LIVEKIT_API_SECRET') ?? 'secret';
+
     http.axiosRef.interceptors.request.use((config) => {
       console.log(
         `[OUT] ${config.method?.toUpperCase()} ${config.baseURL}${config.url}`,
@@ -59,6 +80,54 @@ export class TodoService {
       );
     }
     throw new HttpException('Upstream connection failed', 502);
+  }
+
+  private getUserInfoFromAuthHeader(authHeader: string): {
+    userId: string;
+    displayName: string;
+  } {
+    const token = authHeader?.startsWith('Bearer ')
+      ? authHeader.slice(7)
+      : undefined;
+    if (!token) {
+      throw new UnauthorizedException('Missing bearer token');
+    }
+
+    const payload = jwt.verify(token, this.jwtSecret) as {
+      sub: string;
+      display_name?: string;
+      username?: string;
+    };
+
+    const userId = String(payload.sub);
+    const displayName = payload.display_name ?? payload.username ?? `User ${userId}`;
+    return { userId, displayName };
+  }
+
+  async getLiveKitToken(
+    roomName: string,
+    authHeader: string,
+  ): Promise<{ token: string }> {
+    if (!roomName?.startsWith('project:')) {
+      throw new HttpException('Invalid room name', 400);
+    }
+
+    const { userId, displayName } = this.getUserInfoFromAuthHeader(authHeader);
+    const accessToken = new AccessToken(this.liveKitApiKey, this.liveKitApiSecret, {
+      identity: userId,
+      name: displayName,
+      ttl: '10m',
+    });
+
+    accessToken.addGrant({
+      roomJoin: true,
+      room: roomName,
+      canPublish: true,
+      canSubscribe: true,
+    });
+
+    const token = await accessToken.toJwt();
+    return { token };
   }
 
   async getProjects(authHeader: string): Promise<ProjectInterface[]> {

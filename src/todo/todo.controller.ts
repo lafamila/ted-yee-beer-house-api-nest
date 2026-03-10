@@ -24,6 +24,7 @@ import { InviteMemberInput } from './dtos/invite-member.input';
 import { RegisterInput } from './dtos/register.input';
 import { UpdateAdminInput } from './dtos/update-admin.input';
 import { ChangePasswordInput } from './dtos/change-password.input';
+import { LiveKitTokenInput } from './dtos/livekit-token.input';
 
 @Controller('/todo')
 export class TodoController {
@@ -224,5 +225,13 @@ export class TodoController {
     @Headers('authorization') authHeader: string,
   ) {
     return this.todoService.changePassword(body, authHeader);
+  }
+
+  @Post('/livekit/token')
+  getLiveKitToken(
+    @Body() body: LiveKitTokenInput,
+    @Headers('authorization') authHeader: string,
+  ) {
+    return this.todoService.getLiveKitToken(body.roomName, authHeader);
   }
 }

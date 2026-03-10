@@ -18,6 +18,12 @@ interface MemoLock {
   userId: string;
 }
 
+interface ScreenShareState {
+  userId: string;
+  displayName: string;
+  socketId: string;
+}
+
 @WebSocketGateway({
   cors: { origin: true },
   path: '/api/socket.io/',
@@ -42,6 +48,10 @@ export class MemoGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   // socketId → set of joined memoIds (for cleanup on disconnect)
   private readonly socketMemos = new Map<string, Set<string>>();
+
+  private readonly screenShares = new Map<string, ScreenShareState>();
+
+  private readonly socketProjects = new Map<string, Set<string>>();
 
   private jwtSecret: string;
 
@@ -78,6 +88,7 @@ export class MemoGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
       this.users.set(client.id, { userId, displayName });
       this.socketMemos.set(client.id, new Set());
+      this.socketProjects.set(client.id, new Set());
 
       this.logger.log(`Client connected: ${client.id} (user: ${displayName})`);
     } catch (error) {
@@ -96,9 +107,95 @@ export class MemoGateway implements OnGatewayConnection, OnGatewayDisconnect {
       }
     }
 
+    const stoppedProjects: string[] = [];
+    for (const [projectId, share] of this.screenShares) {
+      if (share.socketId !== client.id) continue;
+      this.screenShares.delete(projectId);
+      stoppedProjects.push(projectId);
+    }
+
+    for (const projectId of stoppedProjects) {
+      this.server.to(`project:${projectId}`).emit('screenShareStopped', {
+        projectId,
+      });
+    }
+
     this.users.delete(client.id);
     this.socketMemos.delete(client.id);
+    this.socketProjects.delete(client.id);
     this.logger.log(`Client disconnected: ${client.id}`);
+  }
+
+  @SubscribeMessage('joinProject')
+  handleJoinProject(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() data: { projectId: string },
+  ) {
+    const roomName = `project:${data.projectId}`;
+    void client.join(roomName);
+    this.socketProjects.get(client.id)?.add(data.projectId);
+
+    const share = this.screenShares.get(data.projectId);
+    client.emit('screenShareStatus', {
+      projectId: data.projectId,
+      isSharing: Boolean(share),
+      sharer: share
+        ? { userId: share.userId, displayName: share.displayName }
+        : null,
+    });
+  }
+
+  @SubscribeMessage('leaveProject')
+  handleLeaveProject(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() data: { projectId: string },
+  ) {
+    void client.leave(`project:${data.projectId}`);
+    this.socketProjects.get(client.id)?.delete(data.projectId);
+
+    const share = this.screenShares.get(data.projectId);
+    if (share && share.socketId === client.id) {
+      this.stopScreenShare(data.projectId);
+    }
+  }
+
+  @SubscribeMessage('startScreenShare')
+  handleStartScreenShare(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() data: { projectId: string },
+  ) {
+    const userInfo = this.users.get(client.id);
+    if (!userInfo) return;
+
+    const existing = this.screenShares.get(data.projectId);
+    if (existing && existing.socketId !== client.id) {
+      client.emit('screenShareDenied', { projectId: data.projectId });
+      return;
+    }
+
+    this.screenShares.set(data.projectId, {
+      userId: userInfo.userId,
+      displayName: userInfo.displayName,
+      socketId: client.id,
+    });
+
+    this.server.to(`project:${data.projectId}`).emit('screenShareStarted', {
+      projectId: data.projectId,
+      sharer: {
+        userId: userInfo.userId,
+        displayName: userInfo.displayName,
+      },
+    });
+  }
+
+  @SubscribeMessage('stopScreenShare')
+  handleStopScreenShare(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() data: { projectId: string },
+  ) {
+    const share = this.screenShares.get(data.projectId);
+    if (!share || share.socketId !== client.id) return;
+    this.stopScreenShare(data.projectId);
   }
 
   @SubscribeMessage('joinMemo')
@@ -239,5 +336,12 @@ export class MemoGateway implements OnGatewayConnection, OnGatewayDisconnect {
         `Memo ${memoId} auto-unlocked on leave/disconnect (${client.id})`,
       );
     }
+  }
+
+  private stopScreenShare(projectId: string) {
+    this.screenShares.delete(projectId);
+    this.server.to(`project:${projectId}`).emit('screenShareStopped', {
+      projectId,
+    });
   }
 }
