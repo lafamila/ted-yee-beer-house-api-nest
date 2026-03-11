@@ -66,9 +66,7 @@ export class MemoGateway implements OnGatewayConnection, OnGatewayDisconnect {
     try {
       const token =
         (client.handshake.auth as { token?: string })?.token ??
-        (client.handshake.headers.authorization?.split(' ')[1] as
-          | string
-          | undefined);
+        client.handshake.headers.authorization?.split(' ')[1];
 
       if (!token) {
         this.logger.warn(`Client ${client.id} connected without token`);

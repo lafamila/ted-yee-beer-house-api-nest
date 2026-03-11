@@ -1,6 +1,10 @@
 /* eslint-disable @typescript-eslint/no-unsafe-return */
 import { HttpService } from '@nestjs/axios';
-import { HttpException, Injectable, UnauthorizedException } from '@nestjs/common';
+import {
+  HttpException,
+  Injectable,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { firstValueFrom } from 'rxjs';
 import { AxiosError } from 'axios';
@@ -46,7 +50,8 @@ export class TodoService {
       this.configService.get<string>('SECRET_KEY') ??
       'your-secret-key-change-in-production';
 
-    this.liveKitApiKey = this.configService.get<string>('LIVEKIT_API_KEY') ?? 'devkey';
+    this.liveKitApiKey =
+      this.configService.get<string>('LIVEKIT_API_KEY') ?? 'devkey';
     this.liveKitApiSecret =
       this.configService.get<string>('LIVEKIT_API_SECRET') ?? 'secret';
 
@@ -100,7 +105,8 @@ export class TodoService {
     };
 
     const userId = String(payload.sub);
-    const displayName = payload.display_name ?? payload.username ?? `User ${userId}`;
+    const displayName =
+      payload.display_name ?? payload.username ?? `User ${userId}`;
     return { userId, displayName };
   }
 
@@ -113,11 +119,15 @@ export class TodoService {
     }
 
     const { userId, displayName } = this.getUserInfoFromAuthHeader(authHeader);
-    const accessToken = new AccessToken(this.liveKitApiKey, this.liveKitApiSecret, {
-      identity: userId,
-      name: displayName,
-      ttl: '10m',
-    });
+    const accessToken = new AccessToken(
+      this.liveKitApiKey,
+      this.liveKitApiSecret,
+      {
+        identity: userId,
+        name: displayName,
+        ttl: '10m',
+      },
+    );
 
     accessToken.addGrant({
       roomJoin: true,
