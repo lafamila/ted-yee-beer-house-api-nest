@@ -25,6 +25,11 @@ import { RegisterInput } from './dtos/register.input';
 import { UpdateAdminInput } from './dtos/update-admin.input';
 import { ChangePasswordInput } from './dtos/change-password.input';
 import { LiveKitTokenInput } from './dtos/livekit-token.input';
+import {
+  CreateTaskTypeInput,
+  UpdateTaskTypeInput,
+  CompleteTaskInput,
+} from './dtos/daily-task.input';
 
 @Controller('/todo')
 export class TodoController {
@@ -233,5 +238,65 @@ export class TodoController {
     @Headers('authorization') authHeader: string,
   ) {
     return this.todoService.getLiveKitToken(body.roomName, authHeader);
+  }
+
+  @Post('/daily-tasks/types')
+  createTaskType(
+    @Headers('authorization') authHeader: string,
+    @Body() body: CreateTaskTypeInput,
+  ) {
+    return this.todoService.createTaskType(authHeader, body);
+  }
+
+  @Get('/daily-tasks/types')
+  getTaskTypes(@Headers('authorization') authHeader: string) {
+    return this.todoService.getTaskTypes(authHeader);
+  }
+
+  @Put('/daily-tasks/types/:typeId')
+  updateTaskType(
+    @Headers('authorization') authHeader: string,
+    @Param('typeId') typeId: string,
+    @Body() body: UpdateTaskTypeInput,
+  ) {
+    return this.todoService.updateTaskType(authHeader, typeId, body);
+  }
+
+  @Delete('/daily-tasks/types/:typeId')
+  deleteTaskType(
+    @Headers('authorization') authHeader: string,
+    @Param('typeId') typeId: string,
+  ) {
+    return this.todoService.deleteTaskType(authHeader, typeId);
+  }
+
+  @Post('/daily-tasks/complete')
+  completeTask(
+    @Headers('authorization') authHeader: string,
+    @Body() body: CompleteTaskInput,
+  ) {
+    return this.todoService.completeTask(authHeader, body);
+  }
+
+  @Delete('/daily-tasks/complete/:taskTypeId/:date')
+  uncompleteTask(
+    @Headers('authorization') authHeader: string,
+    @Param('taskTypeId') taskTypeId: string,
+    @Param('date') date: string,
+  ) {
+    return this.todoService.uncompleteTask(authHeader, taskTypeId, date);
+  }
+
+  @Get('/daily-tasks/calendar')
+  getCalendar(@Query('year') year: string, @Query('month') month: string) {
+    return this.todoService.getCalendar(year, month);
+  }
+
+  @Get('/daily-tasks/calendar/:date')
+  getDayDetail(
+    @Headers('authorization') authHeader: string,
+    @Param('date') date: string,
+  ) {
+    return this.todoService.getDayDetail(authHeader, date);
   }
 }

@@ -50,7 +50,6 @@ export interface MemoVersionInterface {
   createdAt: string;
 }
 
-
 export interface ArticleInterface {
   id: string;
   memoId: string;
@@ -64,4 +63,39 @@ export interface ArticleInterface {
   projectName?: string;
   projectIcon?: string;
   isSecret?: boolean;
+}
+
+export interface DailyTaskTypeInterface {
+  id: string;
+  name: string;
+  icon: string;
+  color: string;
+  displayOrder: number;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CalendarDayInterface {
+  date: string;
+  completedCount: number;
+  totalCount: number;
+  ratio: number;
+}
+
+export interface CalendarMonthInterface {
+  year: number;
+  month: number;
+  totalTaskTypes: number;
+  days: CalendarDayInterface[];
+}
+
+export interface DayDetailInterface {
+  date: string;
+  tasks: {
+    taskTypeId: string;
+    name: string;
+    icon: string;
+    completed: boolean;
+  }[];
 }

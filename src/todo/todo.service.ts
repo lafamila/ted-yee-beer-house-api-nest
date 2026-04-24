@@ -24,6 +24,9 @@ import {
   LoginResponseInterface,
   ProjectMemberInterface,
   UserInterface,
+  DailyTaskTypeInterface,
+  CalendarMonthInterface,
+  DayDetailInterface,
 } from './interfaces/todo.interface';
 import { PublishArticleInput } from './dtos/publish-article.input';
 import { BulkDeleteMemosInput } from './dtos/delete-memos.input';
@@ -32,6 +35,11 @@ import { InviteMemberInput } from './dtos/invite-member.input';
 import { RegisterInput } from './dtos/register.input';
 import { UpdateAdminInput } from './dtos/update-admin.input';
 import { ChangePasswordInput } from './dtos/change-password.input';
+import {
+  CreateTaskTypeInput,
+  UpdateTaskTypeInput,
+  CompleteTaskInput,
+} from './dtos/daily-task.input';
 
 @Injectable()
 export class TodoService {
@@ -512,6 +520,126 @@ export class TodoService {
         this.http.post('/api/auth/change-password', body, { headers }),
       );
       return res.data;
+    } catch (e) {
+      this.handleAxiosError(e);
+    }
+  }
+
+  async createTaskType(
+    authHeader: string,
+    body: CreateTaskTypeInput,
+  ): Promise<DailyTaskTypeInterface> {
+    try {
+      const headers = { Authorization: authHeader };
+      const res = await firstValueFrom(
+        this.http.post('/api/daily-tasks/types', body, { headers }),
+      );
+      return res.data as DailyTaskTypeInterface;
+    } catch (e) {
+      this.handleAxiosError(e);
+    }
+  }
+
+  async getTaskTypes(authHeader: string): Promise<DailyTaskTypeInterface[]> {
+    try {
+      const headers = { Authorization: authHeader };
+      const res = await firstValueFrom(
+        this.http.get('/api/daily-tasks/types', { headers }),
+      );
+      return res.data as DailyTaskTypeInterface[];
+    } catch (e) {
+      this.handleAxiosError(e);
+    }
+  }
+
+  async updateTaskType(
+    authHeader: string,
+    typeId: string,
+    body: UpdateTaskTypeInput,
+  ): Promise<DailyTaskTypeInterface> {
+    try {
+      const headers = { Authorization: authHeader };
+      const res = await firstValueFrom(
+        this.http.put(`/api/daily-tasks/types/${typeId}`, body, { headers }),
+      );
+      return res.data as DailyTaskTypeInterface;
+    } catch (e) {
+      this.handleAxiosError(e);
+    }
+  }
+
+  async deleteTaskType(
+    authHeader: string,
+    typeId: string,
+  ): Promise<{ message: string }> {
+    try {
+      const headers = { Authorization: authHeader };
+      const res = await firstValueFrom(
+        this.http.delete(`/api/daily-tasks/types/${typeId}`, { headers }),
+      );
+      return res.data as { message: string };
+    } catch (e) {
+      this.handleAxiosError(e);
+    }
+  }
+
+  async completeTask(
+    authHeader: string,
+    body: CompleteTaskInput,
+  ): Promise<{ message: string }> {
+    try {
+      const headers = { Authorization: authHeader };
+      const res = await firstValueFrom(
+        this.http.post('/api/daily-tasks/complete', body, { headers }),
+      );
+      return res.data as { message: string };
+    } catch (e) {
+      this.handleAxiosError(e);
+    }
+  }
+
+  async uncompleteTask(
+    authHeader: string,
+    taskTypeId: string,
+    date: string,
+  ): Promise<{ message: string }> {
+    try {
+      const headers = { Authorization: authHeader };
+      const res = await firstValueFrom(
+        this.http.delete(`/api/daily-tasks/complete/${taskTypeId}/${date}`, {
+          headers,
+        }),
+      );
+      return res.data as { message: string };
+    } catch (e) {
+      this.handleAxiosError(e);
+    }
+  }
+
+  async getCalendar(
+    year: string,
+    month: string,
+  ): Promise<CalendarMonthInterface> {
+    try {
+      const res = await firstValueFrom(
+        this.http.get(`/api/daily-tasks/calendar?year=${year}&month=${month}`),
+      );
+      return res.data as CalendarMonthInterface;
+    } catch (e) {
+      this.handleAxiosError(e);
+    }
+  }
+
+  async getDayDetail(
+    authHeader: string,
+    date: string,
+  ): Promise<DayDetailInterface> {
+    try {
+      const headers = { Authorization: authHeader };
+      const res = await firstValueFrom(
+        this.http.get(`/api/daily-tasks/calendar/${date}`, { headers }),
+      );
+      return res.data as DayDetailInterface;
     } catch (e) {
       this.handleAxiosError(e);
     }
